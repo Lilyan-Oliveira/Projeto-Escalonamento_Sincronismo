@@ -3,6 +3,7 @@ import random
 import time
 import os
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 ranking = []
 estado = []
@@ -194,24 +195,68 @@ print(f"\n📊 Média: {media:.2f}s")
 
 # gráficos
 def plot_graficos():
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    import numpy as np
 
-    # Gantt
+    ordem_fixa = sorted(nomes, key=lambda x: int(x.split()[1]))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    # 🔹 GANTT
+    timeline = {}
     tempo_atual = 0
+
     for nome in ordem_hidratacao:
         duracao = tempos_hidratacao[nome]
-        ax1.barh(nome, duracao, left=tempo_atual)
+        timeline[nome] = (tempo_atual, duracao)
         tempo_atual += duracao
+
+    for nome in ordem_fixa:
+        espera = tempo_espera_hidratacao.get(nome, 0)
+
+        if nome in timeline:
+            inicio_exec, duracao = timeline[nome]
+
+            # CINZA → espera
+            ax1.barh(
+                nome,
+                espera,
+                left=inicio_exec - espera,
+                color="lightgray"
+            )
+
+            # AZUL → hidratação
+            ax1.barh(
+                nome,
+                duracao,
+                left=inicio_exec,
+                color="tab:blue"
+            )
+
+        else:
+            ax1.barh(nome, 0)
+
+    ax1.set_axisbelow(True)
+
+    max_tempo = max([inicio + dur for inicio, dur in timeline.values()])
+    ticks = np.arange(0, max_tempo + 1, 1)
+
+    ax1.set_xticks(ticks)
+    ax1.xaxis.grid(True, linestyle='--', linewidth=1)
 
     ax1.set_title(f"Linha do Tempo ({ALGORITMO})")
     ax1.set_xlabel("Tempo (s)")
 
-    # tempo de espera
-    nomes = [n for n, _ in ordenado]
-    valores = [v for _, v in ordenado]
+    legenda = [
+        Patch(facecolor="lightgray", label="Tempo de Espera"),
+        Patch(facecolor="tab:blue", label="Hidratação")
+    ]
 
-    ax2.barh(nomes, valores)
-    ax2.set_title("Tempo de Espera (Ordenado)")
+    ax1.legend(handles=legenda)
+
+    valores = [tempo_espera_hidratacao.get(n, 0) for n in ordem_fixa]
+
+    ax2.barh(ordem_fixa, valores, color="tab:blue")
+    ax2.set_title("Tempo de Espera (Ordem dos Corredores)")
     ax2.set_xlabel("Segundos")
 
     plt.tight_layout()
